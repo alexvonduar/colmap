@@ -42,6 +42,7 @@ void PatchMatchOptions::Print() const {
   PrintOption(depth_min);
   PrintOption(depth_max);
   PrintOption(window_radius);
+  PrintOption(window_step);
   PrintOption(sigma_spatial);
   PrintOption(sigma_color);
   PrintOption(num_samples);
@@ -421,9 +422,23 @@ void PatchMatchController::ProcessProblem(const PatchMatchOptions& options,
                              problems_.size()));
 
   auto patch_match_options = options;
-  patch_match_options.depth_min = depth_ranges_.at(problem.ref_image_id).first;
-  patch_match_options.depth_max = depth_ranges_.at(problem.ref_image_id).second;
+
+  if (patch_match_options.depth_min < 0 || patch_match_options.depth_max < 0) {
+    patch_match_options.depth_min =
+        depth_ranges_.at(problem.ref_image_id).first;
+    patch_match_options.depth_max =
+        depth_ranges_.at(problem.ref_image_id).second;
+    CHECK(patch_match_options.depth_min > 0 &&
+          patch_match_options.depth_max > 0)
+        << "You must manually set the minimum and maximum depth, since no "
+           "sparse model is provided in the workspace.";
+  }
+
   patch_match_options.gpu_index = std::to_string(gpu_index);
+
+  if (patch_match_options.sigma_spatial <= 0.0f) {
+    patch_match_options.sigma_spatial = patch_match_options.window_radius;
+  }
 
   std::vector<Image> images = model.images;
   std::vector<DepthMap> depth_maps;

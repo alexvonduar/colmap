@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef COLMAP_SRC_UI_OPENGL_WINDOW_H_
-#define COLMAP_SRC_UI_OPENGL_WINDOW_H_
+#ifndef COLMAP_SRC_UI_MODEL_VIEWER_WIDGET_H_
+#define COLMAP_SRC_UI_MODEL_VIEWER_WIDGET_H_
 
 #include <QtCore>
 #include <QtOpenGL>
+
+#include <QOpenGLFunctions_3_2_Core>
 
 #include "base/database.h"
 #include "base/reconstruction.h"
@@ -34,7 +36,8 @@
 
 namespace colmap {
 
-class OpenGLWindow : public QWindow {
+class ModelViewerWidget : public QOpenGLWidget,
+                          protected QOpenGLFunctions_3_2_Core {
  public:
   const float kInitNearPlane = 1.0f;
   const float kMinNearPlane = 1e-3f;
@@ -56,16 +59,10 @@ class OpenGLWindow : public QWindow {
   const float kImageScaleSpeed = 0.1f;
   const int kDoubleClickInterval = 250;
 
-  OpenGLWindow(QWidget* parent, OptionManager* options, QScreen* screen = 0);
+  ModelViewerWidget(QWidget* parent, OptionManager* options);
 
-  void SetupGL();
-  void InitializeGL();
-  void ResizeGL();
-  void PaintGL();
-
-  void Update();
-  void Upload();
-  void Clear();
+  void ReloadReconstruction();
+  void ClearReconstruction();
 
   int GetProjectionType() const;
 
@@ -116,17 +113,21 @@ class OpenGLWindow : public QWindow {
 
   QLabel* statusbar_status_label;
 
+ protected:
+  void initializeGL() override;
+  void resizeGL(int width, int height) override;
+  void paintGL() override;
+
  private:
-  void exposeEvent(QExposeEvent* event);
-  void mousePressEvent(QMouseEvent* event);
-  void mouseReleaseEvent(QMouseEvent* event);
-  void mouseMoveEvent(QMouseEvent* event);
-  void wheelEvent(QWheelEvent* event);
+  void mousePressEvent(QMouseEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override;
+  void mouseMoveEvent(QMouseEvent* event) override;
+  void wheelEvent(QWheelEvent* event) override;
 
-  void InitializePainters();
-  void InitializeSettings();
-  void InitializeView();
+  void SetupPainters();
+  void SetupView();
 
+  void Upload();
   void UploadCoordinateGridData();
   void UploadPointData(const bool selection_mode = false);
   void UploadPointConnectionData();
@@ -140,11 +141,9 @@ class OpenGLWindow : public QWindow {
   float AspectRatio() const;
   float OrthographicWindowExtent() const;
 
-  Eigen::Vector4ub ReadPixelColor(int x, int y) const;
   Eigen::Vector3f PositionToArcballVector(const float x, const float y) const;
 
   OptionManager* options_;
-  QOpenGLContext* context_;
 
   QMatrix4x4 model_view_matrix_;
   QMatrix4x4 projection_matrix_;
@@ -194,4 +193,4 @@ class OpenGLWindow : public QWindow {
 
 }  // namespace colmap
 
-#endif  // COLMAP_SRC_UI_OPENGL_WINDOW_H_
+#endif  // COLMAP_SRC_UI_MODEL_VIEWER_WIDGET_H_

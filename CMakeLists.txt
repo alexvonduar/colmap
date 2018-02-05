@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8.11)
 
 project(COLMAP)
 
-set(COLMAP_VERSION "3.3")
+set(COLMAP_VERSION "3.4")
+set(COLMAP_VERSION_NUMBER "3400")
 
 
 ################################################################################
@@ -32,7 +33,7 @@ option(OPENMP_ENABLED "Whether to enable OpenMP" ON)
 option(IPO_ENABLED "Whether to enable interprocedural optimization" ON)
 option(CUDA_ENABLED "Whether to enable CUDA, if available" ON)
 option(OPENGL_ENABLED "Whether to enable OpenGL, if available" ON)
-option(TESTS_ENABLED "Whether to build test binaries" ON)
+option(TESTS_ENABLED "Whether to build test binaries" OFF)
 option(PROFILING_ENABLED "Whether to enable google-perftools linker flags" OFF)
 option(BOOST_STATIC "Whether to enable static boost library linker flags" ON)
 option(CUDA_MULTI_ARCH "Whether to generate CUDA code for multiple architectures" OFF)
@@ -80,7 +81,7 @@ if(CUDA_ENABLED)
     find_package(CUDA ${CUDA_MIN_VERSION} QUIET)
 endif()
 
-find_package(Qt5 REQUIRED)
+find_package(Qt5 5.4 REQUIRED)
 
 
 ################################################################################
@@ -194,8 +195,15 @@ add_subdirectory(src)
 
 
 ################################################################################
-# Uninstall script
+# Install/uninstall script
 ################################################################################
+
+if(IS_MSVC)
+    install(FILES "scripts/shell/COLMAP.bat" "scripts/shell/RUN_TESTS.bat"
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                        GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            DESTINATION "/")
+endif()
 
 configure_file("${CMAKE_SOURCE_DIR}/cmake/CMakeUninstall.cmake"
                "${CMAKE_CURRENT_BINARY_DIR}/CMakeUninstall.cmake"

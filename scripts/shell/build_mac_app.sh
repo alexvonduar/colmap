@@ -16,13 +16,13 @@
 
 # This script creates a deployable package of COLMAP for Mac OS X.
 
-BIN_PATH="../../install-release/bin"
+BIN_PATH="."
 
 echo "Creating bundle directory"
 mkdir -p "$BIN_PATH/COLMAP.app/Contents/MacOS"
 
 echo "Copying binary"
-cp "$BIN_PATH/colmap" "$BIN_PATH/COLMAP.app/Contents/MacOS/COLMAP"
+cp "$BIN_PATH/colmap" "$BIN_PATH/COLMAP.app/Contents/MacOS/colmap"
 
 echo "Writing Info.plist"
 cat <<EOM >"$BIN_PATH/COLMAP.app/Contents/Info.plist"
@@ -33,8 +33,12 @@ cat <<EOM >"$BIN_PATH/COLMAP.app/Contents/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
-    <string>COLMAP</string>
+    <string>colmap</string>
     <key>CFBundleIdentifier</key>
+    <string>COLMAP</string>
+    <key>CFBundleName</key>
+    <string>COLMAP</string>
+    <key>CFBundleDisplayName</key>
     <string>COLMAP</string>
     <key>NSHighResolutionCapable</key>
     <true/>
@@ -49,3 +53,13 @@ install_name_tool -change @rpath/libtbbmalloc.dylib /usr/local/lib/libtbbmalloc.
 
 echo "Linking dynamic libraries"
 /usr/local/opt/qt5/bin/macdeployqt "$BIN_PATH/COLMAP.app"
+
+echo "Wrapping binary"
+cat <<EOM >"$BIN_PATH/COLMAP.app/Contents/MacOS/colmap_gui.sh"
+#!/bin/bash
+script_path="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+\$script_path/colmap gui
+EOM
+chmod +x $BIN_PATH/COLMAP.app/Contents/MacOS/colmap_gui.sh
+sed -i '' 's#<string>colmap</string>#<string>colmap_gui.sh</string>#g' $BIN_PATH/COLMAP.app/Contents/Info.plist
+

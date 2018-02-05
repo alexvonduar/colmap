@@ -1,6 +1,18 @@
 Frequently Asked Questions
 ==========================
 
+Extending COLMAP
+----------------
+
+If you need to simply analyze the produced sparse or dense reconstructions from
+COLMAP, you can load the sparse models in Python and Matlab using the provided
+scripts in ``scripts/python`` and ``scripts/matlab``.
+
+If you want to write a C/C++ executable that builds on top of COLMAP, the
+easiest approach is to start from the ``src/tools/example.cc`` code template and
+implement the desired functionality in a new binary.
+
+
 .. _faq-share-intrinsics:
 
 Share intrinsics
@@ -67,7 +79,7 @@ Sometimes COLMAP fails to reconstruct all images into the same model and hence
 produces multiple sub-models. If those sub-models have common registered images,
 they can be merged into a single model as post-processing step::
 
-    ./src/exe/model_merger \
+    colmap model_merger \
         --input_path1 /path/to/sub-model1 \
         --input_path2 /path/to/sub-model2 \
         --output_path /path/to/merged-model
@@ -75,7 +87,7 @@ they can be merged into a single model as post-processing step::
 To improve the quality of the alignment between the two sub-models, it is
 recommended to run another global bundle adjustment after the merge::
 
-    ./src/exe/bundle_adjuster \
+    colmap bundle_adjuster \
         --input_path /path/to/merged-model \
         --output_path /path/to/refined-merged-model
 
@@ -99,7 +111,7 @@ specified in a text-file with the following format::
 Note that at least 3 images must be specified to estimate a 3D similarity
 transformation. Then, the model can be geo-registered using::
 
-    ./src/exe/model_aligner \
+    colmap model_aligner \
         --input_path /path/to/model \
         --output_path /path/to/geo-registered-model \
         --ref_images_path /path/to/text-file
@@ -121,23 +133,23 @@ Register/localize new images into an existing reconstruction
 If you have an existing reconstruction of images and want to register/localize
 new images within this reconstruction, you can follow these steps::
 
-    ./src/exe/feature_extractor \
+    colmap feature_extractor \
         --database_path $PROJECT_PATH/database.db \
         --image_path $PROJECT_PATH/images \
         --image_list_path /path/to/image-list.txt
 
-    ./src/exe/vocab_tree_matcher \
+    colmap vocab_tree_matcher \
         --database_path $PROJECT_PATH/database.db \
         --VocabTreeMatching.vocab_tree_path /path/to/vocab-tree.bin \
         --VocabTreeMatching.match_list_path /path/to/image-list.txt
 
-    ./src/exe/image_registrator \
+    colmap image_registrator \
         --database_path $PROJECT_PATH/database.db \
         --image_path $PROJECT_PATH/images \
         --import_path /path/to/existing-model \
         --export_path /path/to/model-with-new-images
 
-    ./src/exe/bundle_adjuster \
+    colmap bundle_adjuster \
         --input_path /path/to/model-with-new-images \
         --output_path /path/to/model-with-new-images
 
@@ -152,7 +164,7 @@ registering the images to the model. Instead of running the
 ``image_registrator``, you should run the ``mapper`` to continue the
 reconstruction process from the existing model::
 
-    ./src/exe/mapper \
+    colmap mapper \
         --database_path $PROJECT_PATH/database.db \
         --image_path $PROJECT_PATH/images \
         --import_path /path/to/existing-model \
@@ -160,7 +172,7 @@ reconstruction process from the existing model::
 
 Or, alternatively, you can start the reconstruction from scratch::
 
-    ./src/exe/mapper \
+    colmap mapper \
         --database_path $PROJECT_PATH/database.db \
         --image_path $PROJECT_PATH/images \
         --export_path /path/to/model-with-new-images
@@ -363,6 +375,14 @@ using the following Windows Registry entries::
     "TdrLevel"=dword:00000001
     "TdrDelay"=dword:00000120
 
+To set the registry entries, execute the following commands using administrator
+privileges (e.g., in ``cmd.exe`` or ``powershell.exe``)::
+
+    reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\GraphicsDrivers /v TdrLevel /t REG_DWORD /d 00000001
+    reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\GraphicsDrivers /v TdrDelay /t REG_DWORD /d 00000120
+
+and restart your machine afterwards to make the changes effective.
+
 The X window system under Linux/Unix has a similar feature and detects response
 problems of the GPU. The easiest solution to avoid timeout problems under the X
 window system is to shut it down and run the stereo reconstruction from the
@@ -372,7 +392,7 @@ command-line. Under Ubuntu, you could first stop X using::
 
 And then run the dense reconstruction code from the command-line::
 
-    ./src/exe/dense_stereo ...
+    colmap dense_stereo ...
 
 Finally, you can restart your desktop environment with the following command::
 

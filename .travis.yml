@@ -1,11 +1,11 @@
 language: cpp
-sudo: false
+sudo: true
 dist: trusty
 
 matrix:
   include:
     - os: linux
-      env: CMAKE_OPTIONS="-DOPENGL_ENABLED=OFF -DCeres_DIR=${TRAVIS_BUILD_DIR}/deps/ceres-solver/install/lib/cmake/Ceres" QT_QPA_PLATFORM=offscreen
+      env: CMAKE_OPTIONS="-DOPENGL_ENABLED=OFF -DCeres_DIR=${TRAVIS_BUILD_DIR}/deps/ceres-solver/install/lib/cmake/Ceres -DQt5Core_DIR=/opt/qt54/lib/cmake/Qt5Core -DQt5OpenGL_DIR=/opt/qt54/lib/cmake/Qt5OpenGL" QT_QPA_PLATFORM=offscreen
       addons:
         apt:
           sources:
@@ -25,8 +25,6 @@ matrix:
             - libgoogle-glog-dev
             - libgflags-dev
             - libglew-dev
-            - qtbase5-dev
-            - libqt5opengl5-dev
     - os: osx
       env: CMAKE_OPTIONS="-DLTO_ENABLED=OFF -DQt5Core_DIR=/usr/local/opt/qt5/lib/cmake/Qt5Core -DQt5OpenGL_DIR=/usr/local/opt/qt5/lib/cmake/Qt5OpenGL"
 
@@ -57,6 +55,10 @@ before_script:
       sh -e /etc/init.d/xvfb start
       sleep 3
 
+      sudo add-apt-repository --yes ppa:beineri/opt-qt542-trusty
+      sudo apt-get update -qq
+      sudo apt-get -y install qt54base
+
       cd ${TRAVIS_BUILD_DIR}/deps
       if [[ -z "$(ls -A ceres-solver)" ]]; then
         git clone https://ceres-solver.googlesource.com/ceres-solver
@@ -86,6 +88,6 @@ script:
   - git pull
   - mkdir -p build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS}
+  - cmake .. -DCMAKE_BUILD_TYPE=Release -DTESTS_ENABLED=ON ${CMAKE_OPTIONS}
   - make -j2
-  - make test
+  - CTEST_OUTPUT_ON_FAILURE=1 make test

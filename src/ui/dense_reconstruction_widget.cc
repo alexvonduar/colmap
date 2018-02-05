@@ -39,8 +39,11 @@ class StereoOptionsTab : public OptionsWidget {
 
     AddOptionInt(&options->dense_stereo->max_image_size, "max_image_size", -1);
     AddOptionText(&options->dense_stereo->gpu_index, "gpu_index");
+    AddOptionDouble(&options->dense_stereo->depth_min, "depth_min", -1);
+    AddOptionDouble(&options->dense_stereo->depth_max, "depth_max", -1);
     AddOptionInt(&options->dense_stereo->window_radius, "window_radius");
-    AddOptionDouble(&options->dense_stereo->sigma_spatial, "sigma_spatial");
+    AddOptionInt(&options->dense_stereo->window_step, "window_step");
+    AddOptionDouble(&options->dense_stereo->sigma_spatial, "sigma_spatial", -1);
     AddOptionDouble(&options->dense_stereo->sigma_color, "sigma_color");
     AddOptionInt(&options->dense_stereo->num_samples, "num_samples");
     AddOptionDouble(&options->dense_stereo->ncc_sigma, "ncc_sigma");
@@ -203,11 +206,16 @@ DenseReconstructionWidget::DenseReconstructionWidget(MainWindow* main_window,
   connect(workspace_path_text_, &QLineEdit::textChanged, this,
           &DenseReconstructionWidget::RefreshWorkspace, Qt::QueuedConnection);
 
+  QPushButton* refresh_path_button = new QPushButton(tr("Refresh"), this);
+  connect(refresh_path_button, &QPushButton::released, this,
+          &DenseReconstructionWidget::RefreshWorkspace, Qt::QueuedConnection);
+  grid->addWidget(refresh_path_button, 0, 7, Qt::AlignRight);
+
   QPushButton* workspace_path_button = new QPushButton(tr("Select"), this);
   connect(workspace_path_button, &QPushButton::released, this,
           &DenseReconstructionWidget::SelectWorkspacePath,
           Qt::QueuedConnection);
-  grid->addWidget(workspace_path_button, 0, 7, Qt::AlignRight);
+  grid->addWidget(workspace_path_button, 0, 8, Qt::AlignRight);
 
   QStringList table_header;
   table_header << "image_name"
@@ -226,12 +234,11 @@ DenseReconstructionWidget::DenseReconstructionWidget(MainWindow* main_window,
   table_widget_->setEditTriggers(QAbstractItemView::NoEditTriggers);
   table_widget_->verticalHeader()->setDefaultSectionSize(25);
 
-  grid->addWidget(table_widget_, 1, 0, 1, 8);
+  grid->addWidget(table_widget_, 1, 0, 1, 9);
 
   grid->setColumnStretch(4, 1);
 
   image_viewer_widget_ = new ImageViewerWidget(this);
-  image_viewer_widget_->setWindowFlags(Qt::Dialog);
   image_viewer_widget_->setWindowModality(Qt::ApplicationModal);
 
   refresh_workspace_action_ = new QAction(this);
@@ -268,6 +275,7 @@ void DenseReconstructionWidget::Undistort() {
   if (reconstruction_ == nullptr || reconstruction_->NumRegImages() < 2) {
     QMessageBox::critical(this, "",
                           tr("No reconstruction selected in main window"));
+    return;
   }
 
   COLMAPUndistorter* undistorter =
@@ -291,7 +299,9 @@ void DenseReconstructionWidget::Stereo() {
                          [this]() { refresh_workspace_action_->trigger(); });
   thread_control_widget_->StartThread("Stereo...", true, processor);
 #else
-  QMessageBox::critical(this, "", tr("CUDA not supported"));
+  QMessageBox::critical(this, "",
+                        tr("Dense stereo reconstruction requires CUDA, which "
+                           "is not available on your system."));
 #endif
 }
 
@@ -415,7 +425,7 @@ void DenseReconstructionWidget::RefreshWorkspace() {
             [this, image_name, image_path]() {
               image_viewer_widget_->setWindowTitle(
                   QString("Image for %1").arg(image_name.c_str()));
-              image_viewer_widget_->ReadAndShow(image_path, true);
+              image_viewer_widget_->ReadAndShow(image_path);
             });
     table_widget_->setCellWidget(i, 1, image_button);
 
@@ -517,7 +527,7 @@ QWidget* DenseReconstructionWidget::GenerateTableButtonWidget(
               depth_map.Read(depth_map_path);
               image_viewer_widget_->setWindowTitle(
                   QString("Depth map for %1").arg(image_name.c_str()));
-              image_viewer_widget_->ShowBitmap(depth_map.ToBitmap(2, 98), true);
+              image_viewer_widget_->ShowBitmap(depth_map.ToBitmap(2, 98));
             });
   } else {
     depth_map_button->setEnabled(false);
@@ -537,7 +547,7 @@ QWidget* DenseReconstructionWidget::GenerateTableButtonWidget(
               normal_map.Read(normal_map_path);
               image_viewer_widget_->setWindowTitle(
                   QString("Normal map for %1").arg(image_name.c_str()));
-              image_viewer_widget_->ShowBitmap(normal_map.ToBitmap(), true);
+              image_viewer_widget_->ShowBitmap(normal_map.ToBitmap());
             });
   } else {
     normal_map_button->setEnabled(false);

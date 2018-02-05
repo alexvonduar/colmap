@@ -3,14 +3,17 @@
 Command-line Interface
 ======================
 
-The command-line interface provides access to most of COLMAP's functionality for
-automated scripting. Each core functionality uses a different executable inside
-the ``./src/exe/*`` folder.
+The command-line interface provides access to all of COLMAP's functionality for
+automated scripting. Each core functionality is implemented as a command to the
+``colmap`` executable. Run ``colmap -h`` to list the available commands (or
+``COLMAP.bat -h`` under Windows). Note that if you run COLMAP from the CMake
+build folder, the executable is located at ``./src/exe/colmap``. To start the
+graphical user interface, run ``colmap gui``.
 
 Example
 -------
 
-Assume you stored the images of your project in the following folder structure::
+Assuming you stored the images of your project in the following structure::
 
     /path/to/project/...
     +── images
@@ -19,112 +22,170 @@ Assume you stored the images of your project in the following folder structure::
     │   +── ...
     │   +── imageN.jpg
 
-The command for the automatic reconstruction tools would be::
+The command for the automatic reconstruction tool would be::
 
     # The project folder must contain a folder "images" with all the images.
-    $ PROJECT_PATH=/path/to/project
+    $ DATASET_PATH=/path/to/project
 
-    $ ./src/exe/automatic_reconstructor \
-        --workspace_path $PROJECT_PATH \
-        --image_path $PROJECT_PATH/images
+    $ colmap automatic_reconstructor \
+        --workspace_path $DATASET_PATH \
+        --image_path $DATASET_PATH/images
 
-Note that any executable lists all available options using the command-line
-argument ``--help``. As an alternative to the automatic reconstruction tool in
-case you need more control over the parameters of the individual reconstruction
-steps, an exemplary sequence of commands to reconstruct the scene would be::
+Note that any command lists all available options using the ``-h,--help``
+command-line argument. In case you need more control over the individual
+parameters of the reconstruction process, you can execute the following sequence
+of commands as an alternative to the automatic reconstruction command::
 
     # The project folder must contain a folder "images" with all the images.
-    $ PROJECT_PATH=/path/to/project
+    $ DATASET_PATH=/path/to/dataset
 
-    $ ./src/exe/feature_extractor \
-       --database_path $PROJECT_PATH/database.db \
-       --image_path $PROJECT_PATH/images
+    $ colmap feature_extractor \
+       --database_path $DATASET_PATH/database.db \
+       --image_path $DATASET_PATH/images
 
-    $ ./src/exe/exhaustive_matcher \
-       --database_path $PROJECT_PATH/database.db
+    $ colmap exhaustive_matcher \
+       --database_path $DATASET_PATH/database.db
 
-    $ mkdir $PROJECT_PATH/sparse
+    $ mkdir $DATASET_PATH/sparse
 
-    $ ./src/exe/mapper \
-        --database_path $PROJECT_PATH/database.db \
-        --image_path $PROJECT_PATH/images \
-        --export_path $PROJECT_PATH/sparse
+    $ colmap mapper \
+        --database_path $DATASET_PATH/database.db \
+        --image_path $DATASET_PATH/images \
+        --export_path $DATASET_PATH/sparse
 
-    $ mkdir $PROJECT_PATH/dense
+    $ mkdir $DATASET_PATH/dense
 
-    $ ./src/exe/image_undistorter \
-        --image_path $PROJECT_PATH/images \
-        --input_path $PROJECT_PATH/sparse/0 \
-        --output_path $PROJECT_PATH/dense \
+    $ colmap image_undistorter \
+        --image_path $DATASET_PATH/images \
+        --input_path $DATASET_PATH/sparse/0 \
+        --output_path $DATASET_PATH/dense \
         --output_type COLMAP \
         --max_image_size 2000
 
-    $ ./exe/dense_stereo \
-        --workspace_path $PROJECT_PATH/dense \
+    $ colmap dense_stereo \
+        --workspace_path $DATASET_PATH/dense \
         --workspace_format COLMAP \
         --DenseStereo.geom_consistency true
 
-    $ ./exe/dense_fuser \
-        --workspace_path $PROJECT_PATH/dense \
+    $ colmap dense_fuser \
+        --workspace_path $DATASET_PATH/dense \
         --workspace_format COLMAP \
         --input_type geometric \
-        --output_path $PROJECT_PATH/dense/fused.ply
+        --output_path $DATASET_PATH/dense/fused.ply
 
-    $ ./src/exe/dense_mesher \
-        --input_path $PROJECT_PATH/dense/fused.ply \
-        --output_path $PROJECT_PATH/dense/meshed.ply
+    $ colmap dense_mesher \
+        --input_path $DATASET_PATH/dense/fused.ply \
+        --output_path $DATASET_PATH/dense/meshed.ply
 
-If you want to run COLMAP on a computer (e.g., cluster or cloud service) without
-an attached display, you should run the ``feature_extractor`` and set the
-``--SiftGPUExtraction.index 0`` explicitly if a CUDA device is available or with
-the option ``--use_gpu false``. Then, you should run the ``*_matcher`` with
-``--SiftMatching.use_gpu true`` if a CUDA device is available or with ``--SiftMatching.use_gpu false`` for
-CPU-based feature matching.
+If you want to run COLMAP on a computer without an attached display (e.g.,
+cluster or cloud service), COLMAP automatically switches to use CUDA if
+supported by your system. If no CUDA enabled device is available, you can
+manually select to use CPU-based feature extraction and matching by setting the
+``--SiftExtraction.use_gpu 0`` and ``--SiftMatching.use_gpu 0`` options.
 
 Help
 ----
 
-All executables have a "-h,--help" command-line argument to show the usage and
+The available commands can be listed using the command::
+
+    $ colmap help
+
+        Usage:
+          colmap [command] [options]
+
+        Documentation:
+          https://colmap.github.io/
+
+        Example usage:
+          colmap help [ -h, --help ]
+          colmap gui
+          colmap gui -h [ --help ]
+          colmap automatic_reconstructor -h [ --help ]
+          colmap automatic_reconstructor --image_path IMAGES --workspace_path WORKSPACE
+          colmap feature_extractor --image_path IMAGES --database_path DATABASE
+          colmap exhaustive_matcher --database_path DATABASE
+          colmap mapper --image_path IMAGES --database_path DATABASE --export_path EXPORT
+          ...
+
+        Available commands:
+          help
+          gui
+          automatic_reconstructor
+          bundle_adjuster
+          color_extractor
+          database_creator
+          dense_fuser
+          dense_mesher
+          dense_stereo
+          exhaustive_matcher
+          feature_extractor
+          feature_importer
+          image_rectifier
+          image_registrator
+          image_undistorter
+          mapper
+          matches_importer
+          model_aligner
+          model_analyzer
+          model_converter
+          model_merger
+          model_orientation_aligner
+          point_triangulator
+          rig_bundle_adjuster
+          sequential_matcher
+          spatial_matcher
+          transitive_matcher
+          vocab_tree_builder
+          vocab_tree_matcher
+          vocab_tree_retriever
+
+And each command has a ``-h,--help`` command-line argument to show the usage and
 the available options, e.g.::
 
-    $ ./src/exe/feature_extractor -h
+    $ colmap feature_extractor -h
 
         Options can either be specified via command-line or by defining
         them in a .ini project file passed to `--project_path`.
 
           -h [ --help ]
           --project_path arg
-          --log_to_stderr arg (=0)
-          --log_level arg (=2)
           --database_path arg
           --image_path arg
-          --use_gpu arg (=1)
           --image_list_path arg
           --ImageReader.camera_model arg (=SIMPLE_RADIAL)
           --ImageReader.single_camera arg (=0)
           --ImageReader.camera_params arg
           --ImageReader.default_focal_length_factor arg (=1.2)
+          --SiftExtraction.num_threads arg (=-1)
+          --SiftExtraction.use_gpu arg (=1)
+          --SiftExtraction.gpu_index arg (=-1)
           --SiftExtraction.max_image_size arg (=3200)
           --SiftExtraction.max_num_features arg (=8192)
           --SiftExtraction.first_octave arg (=-1)
+          --SiftExtraction.num_octaves arg (=4)
           --SiftExtraction.octave_resolution arg (=3)
           --SiftExtraction.peak_threshold arg (=0.0066666666666666671)
           --SiftExtraction.edge_threshold arg (=10)
+          --SiftExtraction.estimate_affine_shape arg (=0)
           --SiftExtraction.max_num_orientations arg (=2)
           --SiftExtraction.upright arg (=0)
-          --SiftCPUExtraction.batch_size_factor arg (=3)
-          --SiftCPUExtraction.num_threads arg (=-1)
-          --SiftGPUExtraction.index arg (=-1)
+          --SiftExtraction.domain_size_pooling arg (=0)
+          --SiftExtraction.dsp_min_scale arg (=0.16666666666666666)
+          --SiftExtraction.dsp_max_scale arg (=3)
+          --SiftExtraction.dsp_num_scales arg (=10)
 
 
 The available options can either be provided directly from the command-line or
 through a `.ini` file provided to ``--project_path``.
 
 
-Executables
------------
+Commands
+--------
 
-- ``colmap``: The graphical user interface, see
+The following list briefly documents the functionality of each command, that is
+available as ``colmap [command]``:
+
+- ``gui``: The graphical user interface, see
   :ref:`Graphical User Interface <gui>` for more information.
 
 - ``automatic_reconstruction``: Automatically reconstruct sparse and dense model
@@ -192,6 +253,8 @@ Executables
   Pre-trained trees can be downloaded from https://demuc.de/colmap/.
   This is useful if you want to build a custom tree with a different trade-off
   in terms of precision/recall vs. speed.
+
+- ``vocab_tree_retriever``: Perform vocabulary tree based image retrieval.
 
 
 Visualization

@@ -49,6 +49,7 @@ void WarpImageBetweenCameras(const Camera& source_camera,
     image_point.y() = y + 0.5;
     for (int x = 0; x < target_image->Width(); ++x) {
       image_point.x() = x + 0.5;
+
       // Camera models assume that the upper left pixel center is (0.5, 0.5).
       const Eigen::Vector2d world_point =
           target_camera.ImageToWorld(image_point);
@@ -60,7 +61,7 @@ void WarpImageBetweenCameras(const Camera& source_camera,
                                            source_point.y() - 0.5, &color)) {
         target_image->SetPixel(x, y, color.Cast<uint8_t>());
       } else {
-        target_image->SetPixel(x, y, BitmapColor<uint8_t>(0, 0, 0));
+        target_image->SetPixel(x, y, BitmapColor<uint8_t>(0));
       }
     }
   }
@@ -86,7 +87,7 @@ void WarpImageWithHomography(const Eigen::Matrix3d& H,
                                            source_pixel.y() - 0.5, &color)) {
         target_image->SetPixel(x, y, color.Cast<uint8_t>());
       } else {
-        target_image->SetPixel(x, y, BitmapColor<uint8_t>(0, 0, 0));
+        target_image->SetPixel(x, y, BitmapColor<uint8_t>(0));
       }
     }
   }
@@ -123,7 +124,7 @@ void WarpImageWithHomographyBetweenCameras(const Eigen::Matrix3d& H,
                                            source_point.y() - 0.5, &color)) {
         target_image->SetPixel(x, y, color.Cast<uint8_t>());
       } else {
-        target_image->SetPixel(x, y, BitmapColor<uint8_t>(0, 0, 0));
+        target_image->SetPixel(x, y, BitmapColor<uint8_t>(0));
       }
     }
   }

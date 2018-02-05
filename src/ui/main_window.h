@@ -32,7 +32,7 @@
 #include "ui/license_widget.h"
 #include "ui/log_widget.h"
 #include "ui/match_matrix_widget.h"
-#include "ui/opengl_window.h"
+#include "ui/model_viewer_widget.h"
 #include "ui/project_widget.h"
 #include "ui/reconstruction_manager_widget.h"
 #include "ui/reconstruction_options_widget.h"
@@ -50,8 +50,6 @@ class MainWindow : public QMainWindow {
   const ReconstructionManager& GetReconstructionManager() const;
 
  protected:
-  void showEvent(QShowEvent* event);
-  void afterShowEvent();
   void closeEvent(QCloseEvent* event);
 
  private:
@@ -116,10 +114,8 @@ class MainWindow : public QMainWindow {
   void ShowLog();
   void ExtractColors();
 
+  void SetOptions();
   void ResetOptions();
-  void SetOptionsForIndividual();
-  void SetOptionsForVideo();
-  void SetOptionsForInternet();
 
   void About();
   void Documentation();
@@ -140,7 +136,7 @@ class MainWindow : public QMainWindow {
 
   Timer timer_;
 
-  OpenGLWindow* opengl_window_;
+  ModelViewerWidget* model_viewer_widget_;
   ProjectWidget* project_widget_;
   FeatureExtractionWidget* feature_extraction_widget_;
   FeatureMatchingWidget* feature_matching_widget_;
@@ -168,8 +164,6 @@ class MainWindow : public QMainWindow {
 
   QTimer* statusbar_timer_;
   QLabel* statusbar_timer_label_;
-
-  QAction* after_show_event_;
 
   QAction* action_project_new_;
   QAction* action_project_open_;
@@ -214,10 +208,8 @@ class MainWindow : public QMainWindow {
   QAction* action_grab_movie_;
   QAction* action_undistort_;
   QAction* action_extract_colors_;
+  QAction* action_set_options_;
   QAction* action_reset_options_;
-  QAction* action_set_options_for_individual_;
-  QAction* action_set_options_for_video_;
-  QAction* action_set_options_for_internet_;
 
   QAction* action_about_;
   QAction* action_documentation_;

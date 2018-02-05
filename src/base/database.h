@@ -28,7 +28,6 @@
 #include "estimators/two_view_geometry.h"
 #include "ext/SQLite/sqlite3.h"
 #include "feature/types.h"
-#include "util/sqlite3_utils.h"
 #include "util/types.h"
 
 namespace colmap {
@@ -218,6 +217,11 @@ class Database {
   void CreateMatchesTable() const;
   void CreateInlierMatchesTable() const;
 
+  void UpdateSchema() const;
+
+  bool ExistsColumn(const std::string& table_name,
+                    const std::string& column_name) const;
+
   bool ExistsRowId(sqlite3_stmt* sql_stmt, const sqlite3_int64 row_id) const;
   bool ExistsRowString(sqlite3_stmt* sql_stmt,
                        const std::string& row_entry) const;
@@ -229,6 +233,13 @@ class Database {
   size_t MaxColumn(const std::string& column, const std::string& table) const;
 
   sqlite3* database_ = nullptr;
+
+  // Ensure that only one database object at a time updates the schema of a
+  // database. Since the schema is updated every time a database is opened, this
+  // is to ensure that there are no race conditions ("database locked" error
+  // messages) when the user actually only intends to read from the database,
+  // which requires to open it.
+  static std::mutex update_schema_mutex_;
 
   // Used to ensure that only one transaction is active at the same time.
   std::mutex transaction_mutex_;

@@ -28,30 +28,41 @@
 
 namespace colmap {
 
-class OpenGLWindow;
+class ModelViewerWidget;
+
+class ImageViewerGraphicsScene : public QGraphicsScene {
+ public:
+  ImageViewerGraphicsScene();
+
+  QGraphicsPixmapItem* ImagePixmapItem() const;
+
+ private:
+  QGraphicsPixmapItem* image_pixmap_item_ = nullptr;
+};
 
 class ImageViewerWidget : public QWidget {
  public:
   explicit ImageViewerWidget(QWidget* parent);
 
-  void ShowBitmap(const Bitmap& bitmap, const bool rescale);
-  void ShowPixmap(const QPixmap& pixmap, const bool rescale);
-  void ReadAndShow(const std::string& path, const bool rescale);
+  void ShowBitmap(const Bitmap& bitmap);
+  void ShowPixmap(const QPixmap& pixmap);
+  void ReadAndShow(const std::string& path);
 
- protected:
+ private:
   static const double kZoomFactor;
 
+  ImageViewerGraphicsScene graphics_scene_;
+  QGraphicsView* graphics_view_;
+
+ protected:
+  void resizeEvent(QResizeEvent* event);
   void closeEvent(QCloseEvent* event);
-  void Rescale(const double scale);
   void ZoomIn();
   void ZoomOut();
+  void Save();
 
-  QPixmap pixmap_;
   QGridLayout* grid_layout_;
   QHBoxLayout* button_layout_;
-  QLabel* image_label_;
-  QScrollArea* image_scroll_area_;
-  double zoom_scale_;
 };
 
 class FeatureImageViewerWidget : public ImageViewerWidget {
@@ -80,7 +91,8 @@ class FeatureImageViewerWidget : public ImageViewerWidget {
 
 class DatabaseImageViewerWidget : public FeatureImageViewerWidget {
  public:
-  DatabaseImageViewerWidget(QWidget* parent, OpenGLWindow* opengl_window,
+  DatabaseImageViewerWidget(QWidget* parent,
+                            ModelViewerWidget* model_viewer_widget,
                             OptionManager* options);
 
   void ShowImageWithId(const image_t image_id);
@@ -89,7 +101,7 @@ class DatabaseImageViewerWidget : public FeatureImageViewerWidget {
   void ResizeTable();
   void DeleteImage();
 
-  OpenGLWindow* opengl_window_;
+  ModelViewerWidget* model_viewer_widget_;
 
   OptionManager* options_;
 
