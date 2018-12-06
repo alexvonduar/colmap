@@ -3,7 +3,13 @@
 Tutorial
 ========
 
-3D reconstruction from images traditionally first recovers a sparse
+This tutorial covers the topic of image-based 3D reconstruction by demonstrating
+the individual processing steps in COLMAP. If you are interested in a more
+general and mathematical introduction to the topic of image-based 3D
+reconstruction, please also refer to the `CVPR 2017 Tutorial on Large-scale 3D
+Modeling from Crowdsourced Data <https://demuc.de/tutorials/cvpr2017/>`_.
+
+Image-based 3D reconstruction from images traditionally first recovers a sparse
 representation of the scene and the camera poses of the input images using
 Structure-from-Motion. This output then serves as the input to Multi-View Stereo
 to recover a dense representation of the scene.
@@ -39,7 +45,8 @@ reconstruction tool, the folder would look similar to this::
     │   │   +── sparse
     │   │   +── stereo
     │   │   +── fused.ply
-    │   │   +── meshed.ply
+    │   │   +── meshed-poisson.ply
+    │   │   +── meshed-delaunay.ply
     │   +── ...
     +── database.db
 
@@ -286,9 +293,9 @@ matching modes, that are intended for different input scenarios:
   vocabulary tree, where every N-th image (`loop_detection_period`) is matched
   against its visually most similar images (`loop_detection_num_images`). Note
   that image file names must be ordered sequentially (e.g., `image0001.jpg`,
-  `image0002.jpg`, etc.). You can verify the correct order in the database
-  management tool (see :ref:`Database Format <database-format>`). Note that
-  loop detection requires a pre-trained vocabulary tree, that can be downloaded
+  `image0002.jpg`, etc.). The order in the database is not relevant, since the
+  images are explicitly ordered according to their file names. Note that loop
+  detection requires a pre-trained vocabulary tree, that can be downloaded
   from https://demuc.de/colmap/.
 
 - **Vocabulary Tree Matching**: In this matching mode [schoenberger16vote]_,
@@ -423,7 +430,7 @@ of the input images, MVS can now recover denser scene geometry. COLMAP has an
 integrated dense reconstruction pipeline to produce depth and normal maps for
 all registered images, to fuse the depth and normal maps into a dense point
 cloud with normal information, and to finally estimate a dense surface from the
-fused point cloud using Poisson reconstruction [kazhdan2013]_.
+fused point cloud using Poisson [kazhdan2013]_ or Delaunay reconstruction.
 
 To get started, import your sparse 3D model into COLMAP (or select the
 reconstructed model after finishing the previous sparse reconstruction steps).
@@ -475,9 +482,9 @@ You can review and manage the imported cameras, images, and feature matches in
 the database management tool. Choose ``Processing > Manage database``. In the
 opening dialog, you can see the list of imported images and cameras. You can
 view the features and matches for each image by clicking ``Show image`` and
-``Show matches``. Individual entries in the database tables can be modified by
-double clicking specific cells. Note that any changes to the database are only
-effective after clicking ``Save``.
+``Overlapping images``. Individual entries in the database tables can be
+modified by double clicking specific cells. Note that any changes to the
+database are only effective after clicking ``Save``.
 
 To share intrinsic camera parameters between arbitrary groups of images, select
 a single or multiple images, choose ``Set camera`` and set the `camera_id`,
@@ -511,8 +518,8 @@ please execute ``colmap gui`` or directly specify a project configuration as
 ``colmap gui --project_path path/to/project.ini`` to avoid tedious selection in
 the GUI. To list the different commands available from the command-line, execute
 ``colmap help``. For example, to run feature extraction from the command-line,
-you must execute ``colmap feature_extractor``. The :ref:`Graphical User
-Interface <gui>` and :ref:`Command- line Interface <cli>` sections provide more
+you must execute ``colmap feature_extractor``. The :ref:`graphical user
+interface <gui>` and :ref:`command-line Interface <cli>` sections provide more
 details about the available commands.
 
 

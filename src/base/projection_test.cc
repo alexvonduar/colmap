@@ -1,18 +1,33 @@
-// COLMAP - Structure-from-Motion and Multi-View Stereo.
-// Copyright (C) 2017  Johannes L. Schoenberger <jsch at inf.ethz.ch>
+// Copyright (c) 2018, ETH Zurich and UNC Chapel Hill.
+// All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//
+//     * Neither the name of ETH Zurich and UNC Chapel Hill nor the names of
+//       its contributors may be used to endorse or promote products derived
+//       from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
 
 #define TEST_NAME "base/projection"
 #include "util/testing.h"
@@ -77,13 +92,13 @@ BOOST_AUTO_TEST_CASE(TestDecomposeProjectionMatrix) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(TestCalculateReprojectionError) {
-  const Eigen::Vector4d qvec = Eigen::Vector4d::Random().normalized();
-  const Eigen::Vector3d tvec = Eigen::Vector3d::Random();
+BOOST_AUTO_TEST_CASE(TestCalculateSquaredReprojectionError) {
+  const Eigen::Vector4d qvec = ComposeIdentityQuaternion();
+  const Eigen::Vector3d tvec = Eigen::Vector3d::Zero();
 
   const auto proj_matrix = ComposeProjectionMatrix(qvec, tvec);
 
-  const Eigen::Vector3d point3D = Eigen::Vector3d::Random();
+  const Eigen::Vector3d point3D = Eigen::Vector3d::Random().cwiseAbs();
   const Eigen::Vector3d point2D_h = proj_matrix * point3D.homogeneous();
   const Eigen::Vector2d point2D = point2D_h.hnormalized();
 
@@ -91,12 +106,21 @@ BOOST_AUTO_TEST_CASE(TestCalculateReprojectionError) {
   camera.InitializeWithId(SimplePinholeCameraModel::model_id, 1, 0, 0);
 
   const double error1 =
-      CalculateReprojectionError(point2D, point3D, proj_matrix, camera);
-  BOOST_CHECK_CLOSE(error1, 0, 1e-6);
+      CalculateSquaredReprojectionError(point2D, point3D, qvec, tvec, camera);
+  BOOST_CHECK_EQUAL(error1, 0);
 
-  const double error2 = CalculateReprojectionError(point2D.array() + 1, point3D,
-                                                   proj_matrix, camera);
-  BOOST_CHECK_CLOSE(error2, std::sqrt(2), 1e-6);
+  const double error2 =
+      CalculateSquaredReprojectionError(point2D, point3D, proj_matrix, camera);
+  BOOST_CHECK_GE(error2, 0);
+  BOOST_CHECK_LT(error2, 1e-6);
+
+  const double error3 = CalculateSquaredReprojectionError(
+      point2D.array() + 1, point3D, qvec, tvec, camera);
+  BOOST_CHECK_CLOSE(error3, 2, 1e-6);
+
+  const double error4 = CalculateSquaredReprojectionError(
+      point2D.array() + 1, point3D, proj_matrix, camera);
+  BOOST_CHECK_CLOSE(error4, 2, 1e-6);
 }
 
 BOOST_AUTO_TEST_CASE(TestCalculateAngularError) {

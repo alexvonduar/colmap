@@ -1,18 +1,33 @@
-// COLMAP - Structure-from-Motion and Multi-View Stereo.
-// Copyright (C) 2017  Johannes L. Schoenberger <jsch at inf.ethz.ch>
+// Copyright (c) 2018, ETH Zurich and UNC Chapel Hill.
+// All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//
+//     * Neither the name of ETH Zurich and UNC Chapel Hill nor the names of
+//       its contributors may be used to endorse or promote products derived
+//       from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
 
 #ifndef COLMAP_SRC_BASE_COST_FUNCTIONS_H_
 #define COLMAP_SRC_BASE_COST_FUNCTIONS_H_
@@ -30,7 +45,7 @@ template <typename CameraModel>
 class BundleAdjustmentCostFunction {
  public:
   explicit BundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
-      : x_(point2D(0)), y_(point2D(1)) {}
+      : observed_x_(point2D(0)), observed_y_(point2D(1)) {}
 
   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
@@ -59,15 +74,15 @@ class BundleAdjustmentCostFunction {
                               &residuals[0], &residuals[1]);
 
     // Re-projection error.
-    residuals[0] -= T(x_);
-    residuals[1] -= T(y_);
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
 
     return true;
   }
 
  private:
-  const double x_;
-  const double y_;
+  const double observed_x_;
+  const double observed_y_;
 };
 
 // Bundle adjustment cost function for variable
@@ -78,15 +93,10 @@ class BundleAdjustmentConstantPoseCostFunction {
   BundleAdjustmentConstantPoseCostFunction(const Eigen::Vector4d& qvec,
                                            const Eigen::Vector3d& tvec,
                                            const Eigen::Vector2d& point2D)
-      : qw_(qvec(0)),
-        qx_(qvec(1)),
-        qy_(qvec(2)),
-        qz_(qvec(3)),
-        tx_(tvec(0)),
-        ty_(tvec(1)),
-        tz_(tvec(2)),
-        x_(point2D(0)),
-        y_(point2D(1)) {}
+      : qvec_{qvec[0], qvec[1], qvec[2], qvec[3]},
+        tvec_{tvec[0], tvec[1], tvec[2]},
+        observed_x_(point2D(0)),
+        observed_y_(point2D(1)) {}
 
   static ceres::CostFunction* Create(const Eigen::Vector4d& qvec,
                                      const Eigen::Vector3d& tvec,
@@ -100,14 +110,14 @@ class BundleAdjustmentConstantPoseCostFunction {
   template <typename T>
   bool operator()(const T* const point3D, const T* const camera_params,
                   T* residuals) const {
-    const T qvec[4] = {T(qw_), T(qx_), T(qy_), T(qz_)};
+    const T qvec[4] = {T(qvec_[0]), T(qvec_[1]), T(qvec_[2]), T(qvec_[3])};
 
     // Rotate and translate.
     T projection[3];
     ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
-    projection[0] += T(tx_);
-    projection[1] += T(ty_);
-    projection[2] += T(tz_);
+    projection[0] += T(tvec_[0]);
+    projection[1] += T(tvec_[1]);
+    projection[2] += T(tvec_[2]);
 
     // Project to image plane.
     projection[0] /= projection[2];
@@ -118,22 +128,73 @@ class BundleAdjustmentConstantPoseCostFunction {
                               &residuals[0], &residuals[1]);
 
     // Re-projection error.
-    residuals[0] -= T(x_);
-    residuals[1] -= T(y_);
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
 
     return true;
   }
 
  private:
-  double qw_;
-  double qx_;
-  double qy_;
-  double qz_;
-  double tx_;
-  double ty_;
-  double tz_;
-  double x_;
-  double y_;
+  const double qvec_[4];
+  const double tvec_[3];
+  const double observed_x_;
+  const double observed_y_;
+};
+
+// Standard bundle adjustment cost function for variable
+// camera pose and calibration and constant point parameters.
+template <typename CameraModel>
+class BundleAdjustmentConstantPoint3DCostFunction {
+ public:
+  explicit BundleAdjustmentConstantPoint3DCostFunction(
+      const Eigen::Vector2d& point2D, const Eigen::Vector3d& point3D)
+      : observed_x_(point2D(0)),
+        observed_y_(point2D(1)),
+        point3D_x_(point3D(0)),
+        point3D_y_(point3D(1)),
+        point3D_z_(point3D(2)) {}
+
+  static ceres::CostFunction* Create(const Eigen::Vector2d& point2D,
+                                     const Eigen::Vector3d& point3D) {
+    return (new ceres::AutoDiffCostFunction<
+            BundleAdjustmentConstantPoint3DCostFunction<CameraModel>, 2, 4, 3,
+            CameraModel::kNumParams>(
+        new BundleAdjustmentConstantPoint3DCostFunction(point2D, point3D)));
+  }
+
+  template <typename T>
+  bool operator()(const T* const qvec, const T* const tvec,
+                  const T* const camera_params, T* residuals) const {
+    const T point3D[3] = {T(point3D_x_), T(point3D_y_), T(point3D_z_)};
+
+    // Rotate and translate.
+    T projection[3];
+    ceres::UnitQuaternionRotatePoint(qvec, point3D, projection);
+    projection[0] += tvec[0];
+    projection[1] += tvec[1];
+    projection[2] += tvec[2];
+
+    // Project to image plane.
+    projection[0] /= projection[2];
+    projection[1] /= projection[2];
+
+    // Distort and transform to pixel space.
+    CameraModel::WorldToImage(camera_params, projection[0], projection[1],
+                              &residuals[0], &residuals[1]);
+
+    // Re-projection error.
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
+
+    return true;
+  }
+
+ private:
+  const double observed_x_;
+  const double observed_y_;
+  const double point3D_x_;
+  const double point3D_y_;
+  const double point3D_z_;
 };
 
 // Rig bundle adjustment cost function for variable camera pose and calibration
@@ -146,7 +207,7 @@ template <typename CameraModel>
 class RigBundleAdjustmentCostFunction {
  public:
   explicit RigBundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
-      : x_(point2D(0)), y_(point2D(1)) {}
+      : observed_x_(point2D(0)), observed_y_(point2D(1)) {}
 
   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
@@ -187,15 +248,15 @@ class RigBundleAdjustmentCostFunction {
                               &residuals[0], &residuals[1]);
 
     // Re-projection error.
-    residuals[0] -= T(x_);
-    residuals[1] -= T(y_);
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
 
     return true;
   }
 
  private:
-  const double x_;
-  const double y_;
+  const double observed_x_;
+  const double observed_y_;
 };
 
 // Cost function for refining two-view geometry based on the Sampson-Error.

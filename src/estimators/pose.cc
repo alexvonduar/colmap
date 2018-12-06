@@ -1,18 +1,33 @@
-// COLMAP - Structure-from-Motion and Multi-View Stereo.
-// Copyright (C) 2017  Johannes L. Schoenberger <jsch at inf.ethz.ch>
+// Copyright (c) 2018, ETH Zurich and UNC Chapel Hill.
+// All rights reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//
+//     * Neither the name of ETH Zurich and UNC Chapel Hill nor the names of
+//       its contributors may be used to endorse or promote products derived
+//       from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
 
 #include "estimators/pose.h"
 
@@ -193,12 +208,6 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
   ceres::LossFunction* loss_function =
       new ceres::CauchyLoss(options.loss_function_scale);
 
-  double* camera_params_data = camera->ParamsData();
-  double* qvec_data = qvec->data();
-  double* tvec_data = tvec->data();
-
-  std::vector<Eigen::Vector3d> points3D_copy = points3D;
-
   ceres::Problem problem;
 
   for (size_t i = 0; i < points2D.size(); ++i) {
@@ -210,10 +219,11 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
     ceres::CostFunction* cost_function = nullptr;
 
     switch (camera->ModelId()) {
-#define CAMERA_MODEL_CASE(CameraModel)                                  \
-  case CameraModel::kModelId:                                           \
-    cost_function =                                                     \
-        BundleAdjustmentCostFunction<CameraModel>::Create(points2D[i]); \
+#define CAMERA_MODEL_CASE(CameraModel)                                    \
+  case CameraModel::kModelId:                                             \
+    cost_function =                                                       \
+        BundleAdjustmentConstantPoint3DCostFunction<CameraModel>::Create( \
+            points2D[i], points3D[i]);                                    \
     break;
 
       CAMERA_MODEL_SWITCH_CASES
@@ -221,9 +231,8 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
 #undef CAMERA_MODEL_CASE
     }
 
-    problem.AddResidualBlock(cost_function, loss_function, qvec_data, tvec_data,
-                             points3D_copy[i].data(), camera_params_data);
-    problem.SetParameterBlockConstant(points3D_copy[i].data());
+    problem.AddResidualBlock(cost_function, loss_function, qvec->data(),
+                             tvec->data(), camera->ParamsData());
   }
 
   if (problem.NumResiduals() > 0) {
@@ -231,7 +240,7 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
     *qvec = NormalizeQuaternion(*qvec);
     ceres::LocalParameterization* quaternion_parameterization =
         new ceres::QuaternionParameterization;
-    problem.SetParameterization(qvec_data, quaternion_parameterization);
+    problem.SetParameterization(qvec->data(), quaternion_parameterization);
 
     // Camera parameterization.
     if (!options.refine_focal_length && !options.refine_extra_params) {
@@ -280,7 +289,9 @@ bool RefineAbsolutePose(const AbsolutePoseRefinementOptions& options,
 
   // The overhead of creating threads is too large.
   solver_options.num_threads = 1;
+#if CERES_VERSION_MAJOR < 2
   solver_options.num_linear_solver_threads = 1;
+#endif  // CERES_VERSION_MAJOR
 
   ceres::Solver::Summary summary;
   ceres::Solve(solver_options, &problem, &summary);

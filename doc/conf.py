@@ -53,7 +53,7 @@ copyright = u'2018, Johannes L. Schoenberger'
 # built documents.
 #
 # The short X.Y version.
-version = '3.4'
+version = '3.6'
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -243,8 +243,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'COLMAP', u'COLMAP Documentation',
-   u'Johannes L. Schoenberger', 'COLMAP', 'Structure-from-Motion.',
-   'Miscellaneous'),
+   u'Johannes L. Schoenberger', 'COLMAP',
+   'Structure-from-Motion and Multi-View Stereo.', 'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
